@@ -23,17 +23,15 @@
 
 
 (defn edn->vnode
-  "将 EDN 元素递归转换为 VNode 树。
-   字符串直接返回，向量 [tag attrs? & children] 转为 VNode。
-   属性中的 :key 会提升到 VNode 的 :key 字段。"
+  "将 EDN 元素递归转换为 VNode 树。"
   [edn]
   (if (string? edn)
-    edn  ;; 字符串叶子节点直接保留
+    edn
     (when (vector? edn)
-      (let [[tag & rest] edn
-            attrs (when (map? (first rest)) (first rest))
-            children (if attrs (rest rest) rest)
+      (let [[tag & tail] edn
+            attrs (when (map? (first tail)) (first tail))
+            child-seq (if attrs (rest tail) tail)   ;; 使用 clojure.core/rest 处理 tail
             key (:key attrs)
             props (if attrs (dissoc attrs :key) {})
-            child-nodes (mapv edn->vnode children)]
+            child-nodes (mapv edn->vnode child-seq)]
         (make-vnode tag :key key :props props :children child-nodes)))))

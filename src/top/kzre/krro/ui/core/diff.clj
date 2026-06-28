@@ -54,6 +54,9 @@
 
 (defn- diff-node [old-vnode new-vnode]
   (cond
+    ;; 两者均为 nil，无操作
+    (and (nil? old-vnode) (nil? new-vnode))
+    []
     (nil? new-vnode)
     [{:type :delete-child :parent-vnode nil :child-vnode old-vnode}]
     (nil? old-vnode)
