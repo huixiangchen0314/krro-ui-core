@@ -13,11 +13,27 @@
 (defn make-vnode
   "创建一个纯数据的虚拟节点。可接受 :key, :props, :children。"
   [type & {:as opts}]
-  (map->VNode (merge {:id (str (gensym "vn"))
+  (map->VNode (merge {:id (str (gensym "vnode"))
                       :type type
                       :key nil
                       :props {}
                       :children []
-                      :element nil
-                      :mounted? false}
+                      :element nil}
                      opts)))
+
+
+(defn edn->vnode
+  "将 EDN 元素递归转换为 VNode 树。
+   字符串直接返回，向量 [tag attrs? & children] 转为 VNode。
+   属性中的 :key 会提升到 VNode 的 :key 字段。"
+  [edn]
+  (if (string? edn)
+    edn  ;; 字符串叶子节点直接保留
+    (when (vector? edn)
+      (let [[tag & rest] edn
+            attrs (when (map? (first rest)) (first rest))
+            children (if attrs (rest rest) rest)
+            key (:key attrs)
+            props (if attrs (dissoc attrs :key) {})
+            child-nodes (mapv edn->vnode children)]
+        (make-vnode tag :key key :props props :children child-nodes)))))
