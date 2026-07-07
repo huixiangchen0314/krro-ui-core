@@ -11,7 +11,8 @@
   (node-props [this] "返回属性 map")
   (node-children [this] "返回子节点向量，元素为 IVNode")
   (node-element [this] "返回关联的平台元素，若尚未挂载则为 nil")
-  (node-hooks [this] "返回生命周期钩子 map，包含 :on-mount, :on-update, :on-unmount 等"))
+  (node-hooks [this] "返回生命周期钩子 map，包含 :on-mount, :on-update, :on-unmount 等")
+  (add-hook! [this key f] "动态添加生命周期钩子。key 为 :on-mount/:on-update/:on-unmount"))
 
 (defprotocol IElementFactory
   "平台元素工厂，负责根据虚拟节点创建真实元素，以及更新其属性。
