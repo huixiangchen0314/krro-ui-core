@@ -4,7 +4,8 @@
    完全参照 C# VDomDiff 逻辑：PatchInternal + PatchChildren。
    不再生成操作序列。"
   (:require [top.kzre.krro.ui.core.protocol :as proto]
-            [top.kzre.krro.ui.core.bind :as bind]))
+            [top.kzre.krro.ui.core.bind :as bind])
+  (:import (javafx.scene Parent)))
 
 ;; ═══════════════════════════════════════════════════════════
 ;; 内部辅助
@@ -17,20 +18,22 @@
   (bind/unregister! element))
 
 (defn- invoke-mounted [vnode element]
-  ;; 生命周期扩展点
-  nil)
+  (when-let [on-mount (:on-mount (proto/node-hooks vnode))]
+    (on-mount vnode element)))
 
 (defn- invoke-updated [vnode element]
-  nil)
+  (when-let [on-update (:on-update (proto/node-hooks vnode))]
+    (on-update vnode element)))
 
 (defn- invoke-unmounted [vnode element]
-  nil)
+  (when-let [on-unmount (:on-unmount (proto/node-hooks vnode))]
+    (on-unmount vnode element)))
 
 (defn- replace-child
   "在父容器中用新元素替换旧元素，保持原索引并清理旧元素。"
   [renderer parent-el old-el new-el]
   (when (and old-el parent-el)
-    (let [children (.getChildren ^javafx.scene.Parent parent-el)
+    (let [children (.getChildren ^Parent parent-el)
           idx (.indexOf children old-el)]
       (if (>= idx 0)
         (do

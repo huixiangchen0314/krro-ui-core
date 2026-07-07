@@ -10,7 +10,8 @@
   (node-key [this] "返回可选的稳定标识，来自 :key 属性，用于跨渲染周期匹配")
   (node-props [this] "返回属性 map")
   (node-children [this] "返回子节点向量，元素为 IVNode")
-  (node-element [this] "返回关联的平台元素，若尚未挂载则为 nil"))
+  (node-element [this] "返回关联的平台元素，若尚未挂载则为 nil")
+  (node-hooks [this] "返回生命周期钩子 map，包含 :on-mount, :on-update, :on-unmount 等"))
 
 (defprotocol IElementFactory
   "平台元素工厂，负责根据虚拟节点创建真实元素，以及更新其属性。
