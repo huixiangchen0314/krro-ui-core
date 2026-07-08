@@ -13,13 +13,11 @@
 (def IRenderer proto/IRenderer)
 
 ;; ── 虚拟节点 ─────────────────────────────────────────
-(def VNode vnode/VNode)
 (def make-vnode vnode/make-vnode)
 (def edn->vnode vnode/edn->vnode)
 
 ;; ── Diff 算法与执行器 ───────────────────────────────
-(def diff diff/diff)
-(def patch! diff/patch!)
+(def diff! diff/diff!)
 
 ;; ── UI 描述规范 ──────────────────────────────────────
 (def effective-key spec/effective-key)
