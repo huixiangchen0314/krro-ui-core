@@ -21,9 +21,9 @@
   (when-let [on-mount (:on-mount (proto/node-hooks vnode))]
     (on-mount vnode )))
 
-(defn- invoke-updated [vnode old-vnode ]
+(defn- invoke-updated [element vnode old-vnode]
   (when-let [on-update (:on-update (proto/node-hooks vnode))]
-    (on-update old-vnode vnode  )))
+    (on-update element old-vnode vnode)))
 
 (defn- invoke-unmounted [vnode ]
   (when-let [on-unmount (:on-unmount (proto/node-hooks vnode))]
@@ -69,13 +69,14 @@
         (patch-children factory renderer frame new-el [] (proto/node-children new-node))
         new-node))
     ;; 类型相同且 key 相同，复用真实元素
-    (let [new-node (assoc new-node
+    (let [element (proto/node-element old-node)
+          new-node (assoc new-node
                      :id (proto/node-id old-node)
-                     :element (proto/node-element old-node))]
+                     :element element)]
       (update-properties factory (proto/node-element old-node)
                          (proto/node-props old-node)
                          (proto/node-props new-node))
-      (invoke-updated old-node new-node)   ;; 顺序：old, new
+      (invoke-updated element old-node new-node)   ;; 顺序：old, new
       (patch-children factory renderer frame (proto/node-element old-node)
                       (proto/node-children old-node)
                       (proto/node-children new-node))

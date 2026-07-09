@@ -19,7 +19,7 @@
    这些操作是纯的，不产生副作用（属性更新除外）。"
   (create-element [this vnode frame]
     "根据 vnode 的标签和属性创建真实平台元素，返回该元素。")
-  (update-properties [this element old-props new-props]
+  (update-properties [this element old-vnode new-vnode]
     "更新已存在元素的属性。返回更新后的元素（可能不变）。"))
 
 (defprotocol IRenderer

@@ -18,6 +18,12 @@
 (def make-vnode vnode/make-vnode)
 (def edn->vnode vnode/edn->vnode)
 
+(def event vnode/event)
+
+(def project-binding vnode/project-binding)
+(def frame-param-binding vnode/frame-param-binding)
+
+
 ;; ── Diff 算法与执行器 ───────────────────────────────
 (def diff! diff/diff!)
 

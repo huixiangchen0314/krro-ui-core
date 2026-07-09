@@ -5,7 +5,10 @@
    与 diff 执行器协作，保证 UI 与数据同步。"
   (:require
    [top.kzre.krro.core.command :as cmd]
-   [top.kzre.krro.core.project :as proj]))
+   [top.kzre.krro.core.project :as proj]
+   [top.kzre.krro.ui.core.vnode :as vnode]))
+
+
 
 ;; ═══════════════════════════════════════════
 ;; 内部状态与默认实例
