@@ -65,7 +65,7 @@
     (let [old-el (proto/node-element old-node)
           new-el (proto/create-element factory new-node frame)]
       (replace-child renderer parent-el old-el new-el)
-      (proto/destroy-element factory old-el frame)
+      (proto/destroy-element factory old-node frame)
       (let [new-node (assoc new-node :element new-el)]
         (invoke-mounted new-node)
         (patch-children factory renderer frame new-el [] (proto/node-children new-node))
