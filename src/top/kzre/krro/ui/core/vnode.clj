@@ -26,6 +26,15 @@
                         :hooks hooks-atom}
                        (dissoc opts :hooks)))))
 
+(defn project-binding
+  "项目绑定"
+  [props]
+  (:bind props))
+
+(defn frame-param-binding
+  "Frame param 绑定"
+  [props]
+  (:bindf props))
 
 (defn event
   [props event]
