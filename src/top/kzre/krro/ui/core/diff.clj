@@ -21,9 +21,9 @@
   (when-let [on-mount (:on-mount (proto/node-hooks vnode))]
     (on-mount vnode element)))
 
-(defn- invoke-updated [vnode element]
+(defn- invoke-updated [vnode old-vnode element]
   (when-let [on-update (:on-update (proto/node-hooks vnode))]
-    (on-update vnode element)))
+    (on-update old-vnode vnode  element)))
 
 (defn- invoke-unmounted [vnode element]
   (when-let [on-unmount (:on-unmount (proto/node-hooks vnode))]
@@ -76,7 +76,7 @@
         (update-properties factory (proto/node-element old-node)
                            (proto/node-props old-node)
                            (proto/node-props new-node))
-        (invoke-updated new-node (proto/node-element old-node))
+        (invoke-updated new-node old-node (proto/node-element old-node))
         (patch-children factory renderer frame (proto/node-element old-node)
                         (proto/node-children old-node)
                         (proto/node-children new-node))
