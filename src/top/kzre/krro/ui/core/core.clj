@@ -1,11 +1,13 @@
 (ns top.kzre.krro.ui.core.core
   "krro-ui-core 公共入口。使用 :as 别名简化重导出，一次引入即可使用所有稳定符号。"
-  (:require [top.kzre.krro.ui.core.protocol :as proto]
-            [top.kzre.krro.ui.core.vnode :as vnode]
+  (:require [top.kzre.krro.ui.core.bind :as bind]
+            [top.kzre.krro.ui.core.css :as css]
             [top.kzre.krro.ui.core.diff :as diff]
+            [top.kzre.krro.ui.core.protocol :as proto]
             [top.kzre.krro.ui.core.spec :as spec]
-            [top.kzre.krro.ui.core.bind :as bind]
-            [top.kzre.krro.ui.core.css :as css]))
+            [top.kzre.krro.ui.core.vnode :as vnode]))
+
+
 
 ;; ── 协议 ─────────────────────────────────────────────
 (def IVNode proto/IVNode)

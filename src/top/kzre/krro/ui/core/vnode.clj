@@ -27,6 +27,12 @@
                        (dissoc opts :hooks)))))
 
 
+(defn event
+  [props event]
+  (let [shot-key (keyword (str "on-" (name event)))]
+    (or (shot-key props)
+        (get-in props [:on event]))))
+
 (defn edn->vnode [edn]
   (if (string? edn)
     edn
