@@ -59,11 +59,13 @@
   "对单个节点进行 diff 并执行更新，不检查父节点。"
   [factory renderer frame parent-el old-node new-node]
   (if (or (not= (proto/node-type old-node) (proto/node-type new-node))
-          (not= (effective-key old-node) (effective-key new-node))   ;; 🔥 使用 effective-key 判断复用
+          (not= (effective-key old-node) (effective-key new-node))   ;; 使用 effective-key 判断复用
           (nil? (proto/node-element old-node)))
     ;; 类型不同 或 key 不同 或 旧节点无真实元素 -> 创建新元素并替换
-    (let [new-el (proto/create-element factory new-node frame)]
-      (replace-child renderer parent-el (proto/node-element old-node) new-el)
+    (let [old-el (proto/node-element old-node)
+          new-el (proto/create-element factory new-node frame)]
+      (replace-child renderer parent-el old-el new-el)
+      (proto/destroy-element factory old-el frame)
       (let [new-node (assoc new-node :element new-el)]
         (invoke-mounted new-node)
         (patch-children factory renderer frame new-el [] (proto/node-children new-node))
@@ -120,7 +122,8 @@
         (when old-el
           (invoke-unmounted old-child )
           (cleanup-element old-el)
-          (proto/remove-child renderer parent-el old-el))))))
+          (proto/remove-child renderer parent-el old-el)
+          (proto/destroy-element factory old-child frame))))))
 
 ;; ═══════════════════════════════════════════════════════════
 ;; 公共入口：diff!
