@@ -13,18 +13,21 @@
   (add-hook! [_ key f] (swap! hooks assoc key f)))
 
 (defn make-vnode
-  "创建 VNode。hooks 参数可传普通 map，内部会包装为 atom。"
+  "创建 VNode。hooks 参数可传普通 map，内部会包装为 atom。
+   其他参数 :key, :props, :children 等会覆盖默认值。"
   [type & {:as opts}]
   (let [initial-hooks (or (:hooks opts) {})
-        hooks-atom (atom (if (map? initial-hooks) initial-hooks {}))]
-    (map->VNode (merge {:id (str (gensym "vnode"))
+        hooks-atom (atom initial-hooks)
+        ;; 移除 :hooks 避免重复，其余参数直接覆盖默认值
+        opts' (dissoc opts :hooks)]
+    (map->VNode (merge {:id nil
                         :type type
                         :key nil
                         :props {}
                         :children []
                         :element nil
                         :hooks hooks-atom}
-                       (dissoc opts :hooks)))))
+                       opts'))))
 
 (defn project-binding
   "项目绑定"

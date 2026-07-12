@@ -24,7 +24,7 @@
   (destroy-element [this vnode frame]
     "当虚拟节点被卸载时调用，用于释放平台资源、解除绑定等。"))
 
-(defprotocol IRenderer
+(defprotocol INodePatcher
   "平台渲染器，负责将虚拟 DOM 树挂载到平台视图，并执行所有变更。
    方法接受父平台元素和虚拟节点，执行相应的副作用（添加、删除、移动等）。"
   (append-child [this parent-element vnode]

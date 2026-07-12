@@ -12,7 +12,7 @@
 ;; ── 协议 ─────────────────────────────────────────────
 (def IVNode proto/IVNode)
 (def IElementFactory proto/IElementFactory)
-(def IRenderer proto/IRenderer)
+(def IRenderer proto/INodePatcher)
 
 ;; ── 虚拟节点 ─────────────────────────────────────────
 (def make-vnode vnode/make-vnode)

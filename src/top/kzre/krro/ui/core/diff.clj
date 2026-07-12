@@ -1,15 +1,9 @@
 (ns top.kzre.krro.ui.core.diff
-  "平台无关的虚拟 DOM 增量更新引擎。
-   提供一个 diff! 函数，直接在新旧 VNode 树之间执行增量更新（副作用）。
-   完全参照 C# VDomDiff 逻辑：PatchInternal + PatchChildren。
-   不再生成操作序列。"
+  "平台无关的虚拟 DOM 增量更新引擎。"
   (:require [top.kzre.krro.ui.core.protocol :as proto]
-            [top.kzre.krro.ui.core.bind :as bind])
-  (:import (javafx.scene Parent)))
+            [top.kzre.krro.ui.core.bind :as bind]))
 
-;; ═══════════════════════════════════════════════════════════
-;; 内部辅助
-;; ═══════════════════════════════════════════════════════════
+;; ═══════════════════════════════════ 辅助函数（不变） ═══
 
 (defn- effective-key [vnode]
   (or (proto/node-key vnode) (proto/node-id vnode)))
@@ -17,20 +11,19 @@
 (defn- cleanup-element [element]
   (bind/unregister! element))
 
-(defn- invoke-mounted [vnode ]
+(defn- invoke-mounted [vnode]
   (when-let [on-mount (:on-mount (proto/node-hooks vnode))]
-    (on-mount vnode )))
+    (on-mount vnode)))
 
 (defn- invoke-updated [element vnode old-vnode]
   (when-let [on-update (:on-update (proto/node-hooks vnode))]
     (on-update element old-vnode vnode)))
 
-(defn- invoke-unmounted [vnode ]
+(defn- invoke-unmounted [vnode]
   (when-let [on-unmount (:on-unmount (proto/node-hooks vnode))]
-    (on-unmount vnode )))
+    (on-unmount vnode)))
 
 (defn- replace-child
-  "在父容器中用新元素替换旧元素，保持原索引并清理旧元素。"
   [renderer parent-el old-el new-el]
   (when (and old-el parent-el)
     (let [children (.getChildren parent-el)
@@ -43,57 +36,67 @@
         (proto/append-child renderer parent-el new-el)))))
 
 (defn- update-properties
-  "更新元素属性，包括样式、文本、事件等。委托给工厂的 update-properties。"
   [factory element old-props new-props]
   (when (not= old-props new-props)
     (proto/update-properties factory element old-props new-props)
     (bind/refresh! element)))
 
-;; ═══════════════════════════════════════════════════════════
-;; 核心递归 patch
-;; ═══════════════════════════════════════════════════════════
+;; ═══════════════════════════════════ 核心补丁 ═════════
 
 (declare patch-children)
 
 (defn- patch-internal
-  "对单个节点进行 diff 并执行更新，不检查父节点。"
   [factory renderer frame parent-el old-node new-node]
-  (if (or (not= (proto/node-type old-node) (proto/node-type new-node))
-          (not= (effective-key old-node) (effective-key new-node))   ;; 使用 effective-key 判断复用
-          (nil? (proto/node-element old-node)))
-    ;; 类型不同 或 key 不同 或 旧节点无真实元素 -> 创建新元素并替换
-    (let [old-el (proto/node-element old-node)
-          new-el (proto/create-element factory new-node frame)]
-      (replace-child renderer parent-el old-el new-el)
-      (proto/destroy-element factory old-node frame)
-      (let [new-node (assoc new-node :element new-el)]
-        (invoke-mounted new-node)
-        (patch-children factory renderer frame new-el [] (proto/node-children new-node))
-        new-node))
-    ;; 类型相同且 key 相同，复用真实元素
-    (let [element (proto/node-element old-node)
-          new-node (assoc new-node
-                     :id (proto/node-id old-node)
-                     :element element)]
-      (update-properties factory (proto/node-element old-node)
-                         (proto/node-props old-node)
-                         (proto/node-props new-node))
-      (invoke-updated element old-node new-node)   ;; 顺序：old, new
-      (patch-children factory renderer frame (proto/node-element old-node)
-                      (proto/node-children old-node)
-                      (proto/node-children new-node))
-      new-node)))
+  (let [old-type (proto/node-type old-node)
+        new-type (proto/node-type new-node)
+        old-key  (effective-key old-node)
+        new-key  (effective-key new-node)
+        same-key? (if (and (nil? old-key) (nil? new-key))
+                    true
+                    (= old-key new-key))]
+    (if (or (not= old-type new-type)
+            (not same-key?)
+            (nil? (proto/node-element old-node)))
+      ;; 替换
+      (let [old-el (proto/node-element old-node)
+            new-el (proto/create-element factory new-node frame)]
+        (replace-child renderer parent-el old-el new-el)
+        (proto/destroy-element factory old-node frame)
+        (let [new-node (assoc new-node :element new-el)]
+          (invoke-mounted new-node)
+          ;; 返回更新后的节点，并递归处理子节点
+          (let [updated-children (patch-children factory renderer frame new-el
+                                                 [] (proto/node-children new-node))]
+            (assoc new-node :children updated-children))))
+      ;; 复用
+      (let [element (proto/node-element old-node)
+            new-node (assoc new-node
+                       :id (proto/node-id old-node)
+                       :element element)]
+        (update-properties factory element old-node new-node)
+        (invoke-updated element old-node new-node)
+        (let [updated-children (patch-children factory renderer frame element
+                                               (proto/node-children old-node)
+                                               (proto/node-children new-node))]
+          (assoc new-node :children updated-children))))))
+
+;; ═══════════════════════════════════ patch-children 返回新子节点向量 ═════
 
 (defn- patch-children
-  "递归比较并更新子节点列表。基于 key 匹配，支持移动、创建、删除。
-   完全移植 C# PatchChildren。"
+  "递归比较并更新子节点列表，返回更新后的子 VNode 向量。"
   [factory renderer frame parent-el old-children new-children]
   (let [old-children (vec (remove nil? old-children))
         new-children (vec (remove nil? new-children))
-        old-key-map (reduce (fn [m c] (assoc m (effective-key c) c)) {} old-children)
+        old-key-map (reduce (fn [m c]
+                              (if-let [k (effective-key c)]
+                                (assoc m k c)
+                                m))
+                            {} old-children)
         old-index (atom 0)
         old-list (atom old-children)
-        key-map (atom old-key-map)]
+        key-map (atom old-key-map)
+        ;; 收集更新后的子节点
+        new-list (volatile! (transient []))]
     (doseq [new-idx (range (count new-children))]
       (let [new-child (nth new-children new-idx)
             new-key (effective-key new-child)
@@ -106,51 +109,47 @@
             (when (not= current-pos new-idx)
               (when-let [el (proto/node-element matched)]
                 (proto/move-child renderer parent-el el new-idx)))
-            (patch-internal factory renderer frame parent-el matched new-child))
+            ;; 递归更新，结果加入 new-list
+            (vswap! new-list conj! (patch-internal factory renderer frame parent-el matched new-child)))
           (if (< @old-index (count @old-list))
             (let [old-child (nth @old-list @old-index)]
               (swap! old-index inc)
-              (patch-internal factory renderer frame parent-el old-child new-child))
+              (vswap! new-list conj! (patch-internal factory renderer frame parent-el old-child new-child)))
             (let [new-el (proto/create-element factory new-child frame)]
               (proto/insert-child renderer parent-el new-el new-idx)
               (let [new-child (assoc new-child :element new-el)]
-                (invoke-mounted new-child )
-                (patch-children factory renderer frame new-el [] (proto/node-children new-child))))))))
+                (invoke-mounted new-child)
+                (let [updated (assoc new-child :children (patch-children factory renderer frame new-el [] (proto/node-children new-child)))]
+                  (vswap! new-list conj! updated))))))))
+    ;; 删除剩余的旧节点
     (doseq [i (range @old-index (count @old-list))]
       (let [old-child (nth @old-list i)
             old-el (proto/node-element old-child)]
         (when old-el
-          (invoke-unmounted old-child )
+          (invoke-unmounted old-child)
           (cleanup-element old-el)
           (proto/remove-child renderer parent-el old-el)
-          (proto/destroy-element factory old-child frame))))))
+          (proto/destroy-element factory old-child frame))))
+    ;; 返回持久化向量
+    (persistent! @new-list)))
 
-;; ═══════════════════════════════════════════════════════════
-;; 公共入口：diff!
-;; ═══════════════════════════════════════════════════════════
+;; ═══════════════════════════════════ 入口 diff! ═════════
 
 (defn diff!
-  "比较新旧 VNode 树并直接执行增量更新，返回新的根 VNode。
-   root-el 为平台根容器元素，首次渲染时 old-vnode 应为 nil。"
   [factory renderer frame root-el old-vnode new-vnode]
   (if (nil? old-vnode)
-    ;; 首次渲染：创建整棵树并挂载到根容器
+    ;; 首次渲染
     (let [new-el (proto/create-element factory new-vnode frame)
           new-vnode (assoc new-vnode :element new-el)]
       (proto/append-child renderer root-el new-el)
-      (invoke-mounted new-vnode )
-      (patch-children factory renderer frame new-el [] (proto/node-children new-vnode))
-      new-vnode)
+      (invoke-mounted new-vnode)
+      (let [children (patch-children factory renderer frame new-el [] (proto/node-children new-vnode))]
+        (assoc new-vnode :children children)))
     ;; 增量更新
     (if (= (proto/node-type old-vnode) (proto/node-type new-vnode))
       (let [result (patch-internal factory renderer frame root-el old-vnode new-vnode)]
-        ;; 如果根节点被替换，patch-internal 内部会处理，但根容器 root-el 是固定的。
-        ;; 需要确保新根元素挂载在 root-el 下。
-        ;(when (not= (proto/node-element old-vnode) (proto/node-element result))
-        ;  ;; 根节点已替换，旧根元素已被移除，新元素已插入，直接返回
-        ;  )
         result)
-      ;; 根节点类型不同，完全替换根节点
+      ;; 根节点类型不同，完全替换
       (let [new-el (proto/create-element factory new-vnode frame)
             old-el (proto/node-element old-vnode)]
         (when old-el
@@ -158,6 +157,6 @@
           (proto/remove-child renderer root-el old-el))
         (proto/append-child renderer root-el new-el)
         (let [new-vnode (assoc new-vnode :element new-el)]
-          (invoke-mounted new-vnode )
-          (patch-children factory renderer frame new-el [] (proto/node-children new-vnode))
-          new-vnode)))))
+          (invoke-mounted new-vnode)
+          (let [children (patch-children factory renderer frame new-el [] (proto/node-children new-vnode))]
+            (assoc new-vnode :children children)))))))
