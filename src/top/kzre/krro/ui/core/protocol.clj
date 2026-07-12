@@ -25,15 +25,8 @@
     "当虚拟节点被卸载时调用，用于释放平台资源、解除绑定等。"))
 
 (defprotocol INodePatcher
-  "平台渲染器，负责将虚拟 DOM 树挂载到平台视图，并执行所有变更。
-   方法接受父平台元素和虚拟节点，执行相应的副作用（添加、删除、移动等）。"
-  (append-child [this parent-element vnode]
-    "为 vnode 创建平台元素，追加到 parent-element 下，返回更新后的 vnode（含 element）。")
-  (insert-child [this parent-element vnode index]
-    "在指定索引插入子节点。")
-  (remove-child [this parent-element vnode]
-    "移除 vnode 对应的平台元素。")
-  (replace-child [this parent-element old-vnode new-vnode]
-    "用新虚拟节点替换旧虚拟节点对应的平台元素。")
-  (move-child [this parent-element vnode target-index]
-    "将 vnode 的平台元素移动到 target-index 位置。"))
+  (append-child [this parent child])
+  (insert-child [this parent child index])
+  (remove-child [this parent child])
+  (replace-child [this parent old new])   ;; 平台自己实现替换逻辑
+  (move-child [this parent child target-index]))

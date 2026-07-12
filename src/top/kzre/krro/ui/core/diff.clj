@@ -60,11 +60,11 @@
       ;; 替换
       (let [old-el (proto/node-element old-node)
             new-el (proto/create-element factory new-node frame)]
-        (replace-child renderer parent-el old-el new-el)
+        ;; 直接使用协议替换，不再需要 replace-child 辅助函数
+        (proto/replace-child renderer parent-el old-el new-el)
         (proto/destroy-element factory old-node frame)
         (let [new-node (assoc new-node :element new-el)]
           (invoke-mounted new-node)
-          ;; 返回更新后的节点，并递归处理子节点
           (let [updated-children (patch-children factory renderer frame new-el
                                                  [] (proto/node-children new-node))]
             (assoc new-node :children updated-children))))
@@ -83,7 +83,6 @@
 ;; ═══════════════════════════════════ patch-children 返回新子节点向量 ═════
 
 (defn- patch-children
-  "递归比较并更新子节点列表，返回更新后的子 VNode 向量。"
   [factory renderer frame parent-el old-children new-children]
   (let [old-children (vec (remove nil? old-children))
         new-children (vec (remove nil? new-children))
@@ -95,8 +94,8 @@
         old-index (atom 0)
         old-list (atom old-children)
         key-map (atom old-key-map)
-        ;; 收集更新后的子节点
         new-list (volatile! (transient []))]
+    ;; 第一遍：创建/更新/删除，不移动
     (doseq [new-idx (range (count new-children))]
       (let [new-child (nth new-children new-idx)
             new-key (effective-key new-child)
@@ -106,20 +105,21 @@
             (swap! old-list #(vec (concat (subvec % 0 current-pos) (subvec % (inc current-pos)))))
             (swap! key-map dissoc new-key)
             (when (< current-pos @old-index) (swap! old-index dec))
-            (when (not= current-pos new-idx)
-              (when-let [el (proto/node-element matched)]
-                (proto/move-child renderer parent-el el new-idx)))
-            ;; 递归更新，结果加入 new-list
             (vswap! new-list conj! (patch-internal factory renderer frame parent-el matched new-child)))
           (if (< @old-index (count @old-list))
             (let [old-child (nth @old-list @old-index)]
               (swap! old-index inc)
+              (when-let [k (effective-key old-child)]
+                (swap! key-map dissoc k))
               (vswap! new-list conj! (patch-internal factory renderer frame parent-el old-child new-child)))
             (let [new-el (proto/create-element factory new-child frame)]
-              (proto/insert-child renderer parent-el new-el new-idx)
+              ;; 追加新节点（后续排序）
+              (proto/append-child renderer parent-el new-el)
               (let [new-child (assoc new-child :element new-el)]
                 (invoke-mounted new-child)
-                (let [updated (assoc new-child :children (patch-children factory renderer frame new-el [] (proto/node-children new-child)))]
+                (let [updated (assoc new-child :children
+                                               (patch-children factory renderer frame new-el
+                                                               [] (proto/node-children new-child)))]
                   (vswap! new-list conj! updated))))))))
     ;; 删除剩余的旧节点
     (doseq [i (range @old-index (count @old-list))]
@@ -130,8 +130,12 @@
           (cleanup-element old-el)
           (proto/remove-child renderer parent-el old-el)
           (proto/destroy-element factory old-child frame))))
-    ;; 返回持久化向量
-    (persistent! @new-list)))
+    ;; 第二遍：统一排序（根据 final-list 的顺序移动每个节点到正确位置）
+    (let [final-list (persistent! @new-list)]
+      (doseq [i (range (count final-list))]
+        (when-let [el (proto/node-element (nth final-list i))]
+          (proto/move-child renderer parent-el el i)))
+      final-list)))
 
 ;; ═══════════════════════════════════ 入口 diff! ═════════
 
