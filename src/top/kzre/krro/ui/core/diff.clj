@@ -38,8 +38,7 @@
 (defn- update-properties
   [factory element old-props new-props]
   (when (not= old-props new-props)
-    (proto/update-properties factory element old-props new-props)
-    (bind/refresh! element)))
+    (proto/update-properties factory element old-props new-props)))
 
 ;; ═══════════════════════════════════ 核心补丁 ═════════
 
