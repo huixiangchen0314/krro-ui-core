@@ -50,11 +50,9 @@
     edn
     (when (vector? edn)
       (let [[tag & tail] edn]
-        (if (or (vector? tag)
-                (seq? tag)
-                (coll? tag))
-          ;; 匿名组件：递归解析这个向量，直接得到 VNode
-          (edn->vnode tag)
+        (if (coll? tag)
+          ;; 匿名组件：整个向量视为子节点列表，递归解析每一项
+          (mapv edn->vnode edn)
           ;; 标准标签
           (let [attrs (when (map? (first tail)) (first tail))
                 child-seq (if attrs (rest tail) tail)
