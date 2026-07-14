@@ -50,7 +50,9 @@
     edn
     (when (vector? edn)
       (let [[tag & tail] edn]
-        (if (vector? tag)
+        (if (or (vector? tag)
+                (seq? tag)
+                (coll? tag))
           ;; 匿名组件：递归解析这个向量，直接得到 VNode
           (edn->vnode tag)
           ;; 标准标签
