@@ -8,11 +8,14 @@
 ;; ═══════════════════════════════════════════════════════
 (s/def ::key keyword?)
 (s/def ::style (s/map-of keyword? string?))
-(s/def ::class (s/or :single string? :multiple (s/coll-of string? :kind vector?)))
-(s/def ::visible? boolean?)
-(s/def ::disabled? boolean?)
+(s/def ::class (s/or :single (s/or :kw keyword? :str string?)
+                     :multiple (s/coll-of (s/or :kw keyword? :str string?) :kind vector?)))
+(s/def ::stylesheet (s/or :single string?
+                          :multiple (s/coll-of string? :kind vector?)))
+(s/def ::visible boolean?)
+(s/def ::disabled boolean?)
 (s/def ::content string?)
-(s/def ::checked? boolean?)
+(s/def ::checked boolean?)
 (s/def ::value any?)
 (s/def ::items (s/coll-of string? :kind vector?))
 (s/def ::direction #{:vertical :horizontal})
@@ -47,15 +50,23 @@
 ;; 公共属性（所有组件均可包含）
 ;; ═══════════════════════════════════════════════════════
 (s/def ::common-attrs
-  (s/keys :opt-un [::key ::style ::class ::visible? ::disabled?
-                   ::drag-source ::drag-target]))
+  (s/keys :opt-un [::key ::style ::class ::visible ::disabled
+                   ::drag-source ::drag-target ::stylesheet]))
 
 ;; ═══════════════════════════════════════════════════════
 ;; 布局容器
 ;; ═══════════════════════════════════════════════════════
+
+(s/def ::alignment (s/or :keyword #{:top-left :top-center :top-right
+                                    :center-left :center :center-right
+                                    :bottom-left :bottom-center :bottom-right
+                                    :baseline-left :baseline-center :baseline-right}
+                         :string string?))
+
 (s/def ::block-attrs (s/merge ::common-attrs
-                              (s/keys :opt-un [::direction])))
-(s/def ::split-attrs ::common-attrs)
+                              (s/keys :opt-un [::direction ::alignment])))
+(s/def ::split-attrs (s/merge ::common-attrs
+                              (s/keys :opt-un [::direction ::alignment])))
 (s/def ::scroll-attrs ::common-attrs)
 (s/def ::tool-bar-attrs ::common-attrs)
 
@@ -85,10 +96,10 @@
                                   (s/keys :opt-un [::content])))
 (s/def ::check-box-attrs (s/merge ::common-attrs
                                   ::eventful-attrs
-                                  (s/keys :opt-un [::content ::checked?])))
+                                  (s/keys :opt-un [::content ::checked])))
 (s/def ::radio-button-attrs (s/merge ::common-attrs
                                      ::eventful-attrs
-                                     (s/keys :opt-un [::content ::checked?])))
+                                     (s/keys :opt-un [::content ::checked])))
 (s/def ::combo-box-attrs (s/merge ::common-attrs
                                   ::eventful-attrs
                                   (s/keys :opt-un [::items ::value])))
@@ -135,18 +146,29 @@
 (defmethod vnode-spec :slider       [_] (s/cat :tag #(= :slider %)
                                                :attrs (s/? ::slider-attrs)
                                                :children (s/cat)))
-(defmethod vnode-spec :progress     [_] (s/cat :tag #(= :progress %)
-                                               :attrs (s/? ::progress-attrs)
-                                               :children (s/cat)))
-(defmethod vnode-spec :separator    [_] (s/cat :tag #(= :separator %)
-                                               :attrs (s/? ::separator-attrs)
-                                               :children (s/cat)))
+
 (defmethod vnode-spec :image        [_] (s/cat :tag #(= :image %)
                                                :attrs (s/? ::image-attrs)
                                                :children (s/cat)))
 (defmethod vnode-spec :link         [_] (s/cat :tag #(= :link %)
                                                :attrs (s/? ::link-attrs)
                                                :children (s/cat)))
+
+(defmethod vnode-spec :scroll       [_] (s/cat :tag #(= :scroll %)
+                                               :attrs (s/? ::scroll-attrs)
+                                               :children (s/* (s/multi-spec vnode-spec first))))
+(defmethod vnode-spec :split        [_] (s/cat :tag #(= :split %)
+                                               :attrs (s/? ::split-attrs)
+                                               :children (s/* (s/multi-spec vnode-spec first))))
+
+;; 这些属于拓展元素，即大概不是所有原生gui都默认提供的，虽然可能提供，需要渲染器提供解释支持
+(defmethod vnode-spec :progress     [_] (s/cat :tag #(= :progress %)
+                                               :attrs (s/? ::progress-attrs)
+                                               :children (s/cat)))
+(defmethod vnode-spec :separator    [_] (s/cat :tag #(= :separator %)
+                                               :attrs (s/? ::separator-attrs)
+                                               :children (s/cat)))
+
 (defmethod vnode-spec :menu-bar     [_] (s/cat :tag #(= :menu-bar %)
                                                :attrs (s/? ::menu-bar-attrs)
                                                :children (s/* (s/multi-spec vnode-spec first))))
@@ -156,12 +178,7 @@
 (defmethod vnode-spec :menu-item    [_] (s/cat :tag #(= :menu-item %)
                                                :attrs (s/? ::menu-item-attrs)
                                                :children (s/cat)))
-(defmethod vnode-spec :scroll       [_] (s/cat :tag #(= :scroll %)
-                                               :attrs (s/? ::scroll-attrs)
-                                               :children (s/* (s/multi-spec vnode-spec first))))
-(defmethod vnode-spec :split        [_] (s/cat :tag #(= :split %)
-                                               :attrs (s/? ::split-attrs)
-                                               :children (s/* (s/multi-spec vnode-spec first))))
+
 (defmethod vnode-spec :tool-bar     [_] (s/cat :tag #(= :tool-bar %)
                                                :attrs (s/? ::tool-bar-attrs)
                                                :children (s/* (s/multi-spec vnode-spec first))))

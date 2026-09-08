@@ -28,8 +28,8 @@
 (s/def ::style map?)
 
 ;; 状态属性
-(s/def ::visible? boolean?)
-(s/def ::disabled? boolean?)
+(s/def ::visible boolean?)
+(s/def ::disabled boolean?)
 
 ;; 数据绑定
 (s/def ::path (s/coll-of (s/or :kw keyword? :idx int?) :kind vector? :min-count 1))
@@ -55,7 +55,7 @@
 
 ;; ── 布局容器 ────────────────────────────────
 (s/def ::direction #{:vertical :horizontal})
-(s/def ::block-props (s/keys :opt-un [::direction ::style ::key ::visible? ::disabled?]))
+(s/def ::block-props (s/keys :opt-un [::direction ::style ::key ::visible ::disabled]))
 
 ;; Grid 专用属性
 (s/def ::columns int?)
@@ -69,20 +69,20 @@
 
 ;; ── 基础控件 ────────────────────────────────
 (s/def ::content string?)
-(s/def ::text-props (s/keys :opt-un [::content ::style ::key ::bind ::visible?]))
+(s/def ::text-props (s/keys :opt-un [::content ::style ::key ::bind ::visible]))
 
-(s/def ::button-props (s/keys :opt-un [::content ::on ::style ::key ::bind ::disabled?]))
+(s/def ::button-props (s/keys :opt-un [::content ::on ::style ::key ::bind ::disabled]))
 
 (s/def ::placeholder string?)
-(s/def ::input-props (s/keys :opt-un [::content ::placeholder ::on ::style ::key ::bind ::disabled?]))
+(s/def ::input-props (s/keys :opt-un [::content ::placeholder ::on ::style ::key ::bind ::disabled]))
 
-(s/def ::text-area-props (s/keys :opt-un [::content ::placeholder ::style ::key ::bind ::disabled?]))
+(s/def ::text-area-props (s/keys :opt-un [::content ::placeholder ::style ::key ::bind ::disabled]))
 
-(s/def ::checked? boolean?)
-(s/def ::check-box-props (s/keys :opt-un [::content ::checked? ::on ::style ::key ::bind ::disabled?]))
+(s/def ::checked boolean?)
+(s/def ::check-box-props (s/keys :opt-un [::content ::checked ::on ::style ::key ::bind ::disabled]))
 
 (s/def ::radio-group string?)
-(s/def ::radio-button-props (s/keys :opt-un [::content ::checked? ::radio-group ::on ::style ::key ::bind ::disabled?]))
+(s/def ::radio-button-props (s/keys :opt-un [::content ::checked ::radio-group ::on ::style ::key ::bind ::disabled]))
 
 (s/def ::min number?)
 (s/def ::max number?)

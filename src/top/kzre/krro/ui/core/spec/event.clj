@@ -6,7 +6,9 @@
 ;; ═══════════════════════════════════════════════════════
 ;; 基础事件
 ;; ═══════════════════════════════════════════════════════
-(s/def ::type keyword?)          ;; 事件类型，如 :click, :change, :keydown
+;; 事件类型，如 :click, :change, :keydown
+(s/def ::type #{:move :hover :click :change :press :drag :release :wheel})
+
 (s/def ::target any?)            ;; 事件源组件标识（可能是 VNode 的 :key 或 :id）
 (s/def ::timestamp int?)         ;; 时间戳（毫秒）
 
