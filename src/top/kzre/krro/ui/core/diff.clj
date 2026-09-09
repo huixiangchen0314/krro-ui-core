@@ -24,18 +24,6 @@
   (when-let [on-unmount (:on-unmount (proto/node-hooks vnode))]
     (on-unmount vnode)))
 
-(defn- replace-child
-  [renderer parent-el old-el new-el]
-  (when (and old-el parent-el)
-    (let [children (.getChildren parent-el)
-          idx (.indexOf children old-el)]
-      (if (>= idx 0)
-        (do
-          (cleanup-element old-el)
-          (proto/remove-child renderer parent-el old-el)
-          (proto/insert-child renderer parent-el new-el idx))
-        (proto/append-child renderer parent-el new-el)))))
-
 (defn- update-properties
   [factory element old-props new-props]
   (when (not= old-props new-props)
@@ -56,8 +44,7 @@
                     (= old-key new-key))]
     (if (or (not= old-type new-type)
             (not same-key?)
-            (nil? (proto/node-element old-node))
-            (vnode/has-event? (proto/node-props old-node)))
+            (nil? (proto/node-element old-node)))
       ;; 替换
       (let [old-el (proto/node-element old-node)
             new-el (proto/create-element factory new-node frame)]
