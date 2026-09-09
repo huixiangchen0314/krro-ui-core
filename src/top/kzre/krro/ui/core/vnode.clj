@@ -42,8 +42,12 @@
 (defn event
   [props event]
   (let [shot-key (keyword (str "on-" (name event)))]
-    (or (shot-key props)
+    (or (get props shot-key)
         (get-in props [:on event]))))
+(defn has-event?
+  "判断 props 中是否包含事件属性（以 :on- 开头的键）。"
+  [props]
+  (some #(-> % name (.startsWith "on-")) (keys props)))
 
 (defn edn->vnode [edn]
   (if (string? edn)

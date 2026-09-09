@@ -1,7 +1,8 @@
 (ns top.kzre.krro.ui.core.diff
   "平台无关的虚拟 DOM 增量更新引擎。"
   (:require [top.kzre.krro.ui.core.protocol :as proto]
-            [top.kzre.krro.ui.core.bind :as bind]))
+            [top.kzre.krro.ui.core.bind :as bind]
+            [top.kzre.krro.ui.core.vnode :as vnode]))
 
 ;; ═══════════════════════════════════ 辅助函数（不变） ═══
 
@@ -55,7 +56,8 @@
                     (= old-key new-key))]
     (if (or (not= old-type new-type)
             (not same-key?)
-            (nil? (proto/node-element old-node)))
+            (nil? (proto/node-element old-node))
+            (vnode/has-event? (proto/node-props old-node)))
       ;; 替换
       (let [old-el (proto/node-element old-node)
             new-el (proto/create-element factory new-node frame)]
