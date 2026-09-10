@@ -1,15 +1,23 @@
 (ns top.kzre.krro.ui.core.diff
   "平台无关的虚拟 DOM 增量更新引擎。"
-  (:require [top.kzre.krro.ui.core.protocol :as proto]
-            [top.kzre.krro.ui.core.bind :as bind]
-            [top.kzre.krro.ui.core.vnode :as vnode]))
+  (:require
+    [top.kzre.krro.ui.core.bind :as bind]
+    [top.kzre.krro.ui.core.component :as component]
+    [top.kzre.krro.ui.core.protocol :as proto]
+    [top.kzre.krro.ui.core.vnode :as vnode]))
 
 ;; ═══════════════════════════════════ 辅助函数（不变） ═══
 
 (defn- effective-key [vnode]
   (or (proto/node-key vnode) (proto/node-id vnode)))
 
-(defn- cleanup-element [element]
+
+
+
+
+
+;; TODO 由渲染器清理，我们不要动
+(defn- ^:deprecated cleanup-element [element]
   (bind/unregister! element))
 
 (defn- invoke-mounted [vnode]
@@ -33,38 +41,71 @@
 
 (declare patch-children)
 
+
+(defn- resolve-component [old-vnode new-vnode frame]
+  (if-let [{:keys [factory]} (component/get-component (proto/node-type new-vnode))]
+    (if (and old-vnode new-vnode
+             ;; 存在旧的渲染
+             (:render old-vnode)
+             ;; 节点类型可能因为组件展开而不同, 我们只比较key
+             (= (effective-key old-vnode) (effective-key new-vnode)))
+      ;; ── 复用：闭包状态、钩子、element 全部继承自旧 vnode ──
+      (let [render  (:render old-vnode)
+            props   (proto/node-props new-vnode)]
+        (merge (render old-vnode props)
+               (select-keys old-vnode [:element])))
+      ;; ── 新建：调用工厂，创建状态和钩子 ──
+      (let [node-id    (proto/node-id new-vnode)
+            init-props (proto/node-props new-vnode)
+            {:keys [render on-mount on-update on-unmount]} (factory init-props)
+            render-fn
+            (fn [old-node props]
+              (let [new-node (->  (render props frame)
+                              (vnode/edn->vnode node-id))]
+                (when  on-mount  (proto/add-hook! new-node :on-mount on-mount))
+                (when  on-update  (proto/add-hook! new-node :on-update on-update))
+                (let [node' (resolve-component old-node new-node frame)]
+                  (when  on-unmount  (proto/add-hook! node' :on-unmount on-unmount))
+                  node')))
+            vnode (render-fn old-vnode init-props)]
+        (assoc vnode :render render-fn)))
+    ;; 不是组件
+    new-vnode))
+
+
 (defn- patch-internal
-  [factory renderer frame parent-el old-node new-node]
-  (let [old-type (proto/node-type old-node)
-        new-type (proto/node-type new-node)
-        old-key  (effective-key old-node)
-        new-key  (effective-key new-node)
+  [factory renderer frame parent-el old-vnode new-vnode]
+  (let [new-vnode (resolve-component old-vnode new-vnode frame)
+        old-type (proto/node-type old-vnode)
+        new-type (proto/node-type new-vnode)
+        old-key  (effective-key old-vnode)
+        new-key  (effective-key new-vnode)
         same-key? (if (and (nil? old-key) (nil? new-key))
                     true
                     (= old-key new-key))]
     (if (or (not= old-type new-type)
             (not same-key?)
-            (nil? (proto/node-element old-node)))
+            (nil? (proto/node-element old-vnode)))
       ;; 替换
-      (let [old-el (proto/node-element old-node)
-            new-el (proto/create-element factory new-node frame)]
+      (let [old-el (proto/node-element old-vnode)
+            new-el (proto/create-element factory new-vnode frame)]
         ;; 直接使用协议替换，不再需要 replace-child 辅助函数
         (proto/replace-child renderer parent-el old-el new-el)
-        (proto/destroy-element factory old-node frame)
-        (let [new-node (assoc new-node :element new-el)]
+        (proto/destroy-element factory old-vnode frame)
+        (let [new-node (assoc new-vnode :element new-el)]
           (invoke-mounted new-node)
           (let [updated-children (patch-children factory renderer frame new-el
                                                  [] (proto/node-children new-node))]
             (assoc new-node :children updated-children))))
       ;; 复用
-      (let [element (proto/node-element old-node)
-            new-node (assoc new-node
-                       :id (proto/node-id old-node)
+      (let [element (proto/node-element old-vnode)
+            new-node (assoc new-vnode
+                       :id (proto/node-id old-vnode)
                        :element element)]
-        (update-properties factory element old-node new-node)
-        (invoke-updated element old-node new-node)
+        (update-properties factory element old-vnode new-node)
+        (invoke-updated element old-vnode new-node)
         (let [updated-children (patch-children factory renderer frame element
-                                               (proto/node-children old-node)
+                                               (proto/node-children old-vnode)
                                                (proto/node-children new-node))]
           (assoc new-node :children updated-children))))))
 
@@ -129,26 +170,27 @@
 
 (defn diff!
   [factory renderer frame root-el old-vnode new-vnode]
-  (if (nil? old-vnode)
-    ;; 首次渲染
-    (let [new-el (proto/create-element factory new-vnode frame)
-          new-vnode (assoc new-vnode :element new-el)]
-      (proto/append-child renderer root-el new-el)
-      (invoke-mounted new-vnode)
-      (let [children (patch-children factory renderer frame new-el [] (proto/node-children new-vnode))]
-        (assoc new-vnode :children children)))
-    ;; 增量更新
-    (if (= (proto/node-type old-vnode) (proto/node-type new-vnode))
-      (let [result (patch-internal factory renderer frame root-el old-vnode new-vnode)]
-        result)
-      ;; 根节点类型不同，完全替换
+  (let [new-vnode (resolve-component old-vnode new-vnode frame)]
+    (if (nil? old-vnode)
+      ;; 首次渲染
       (let [new-el (proto/create-element factory new-vnode frame)
-            old-el (proto/node-element old-vnode)]
-        (when old-el
-          (cleanup-element old-el)
-          (proto/remove-child renderer root-el old-el))
+            new-vnode (assoc new-vnode :element new-el)]
         (proto/append-child renderer root-el new-el)
-        (let [new-vnode (assoc new-vnode :element new-el)]
-          (invoke-mounted new-vnode)
-          (let [children (patch-children factory renderer frame new-el [] (proto/node-children new-vnode))]
-            (assoc new-vnode :children children)))))))
+        (invoke-mounted new-vnode)
+        (let [children (patch-children factory renderer frame new-el [] (proto/node-children new-vnode))]
+          (assoc new-vnode :children children)))
+      ;; 增量更新
+      (if (= (proto/node-type old-vnode) (proto/node-type new-vnode))
+        (let [result (patch-internal factory renderer frame root-el old-vnode new-vnode)]
+          result)
+        ;; 根节点类型不同，完全替换
+        (let [new-el (proto/create-element factory new-vnode frame)
+              old-el (proto/node-element old-vnode)]
+          (when old-el
+            (cleanup-element old-el)
+            (proto/remove-child renderer root-el old-el))
+          (proto/append-child renderer root-el new-el)
+          (let [new-vnode (assoc new-vnode :element new-el)]
+            (invoke-mounted new-vnode)
+            (let [children (patch-children factory renderer frame new-el [] (proto/node-children new-vnode))]
+              (assoc new-vnode :children children))))))))

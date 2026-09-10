@@ -1,6 +1,7 @@
 (ns top.kzre.krro.ui.core.core
   "krro-ui-core 公共入口。使用 :as 别名简化重导出，一次引入即可使用所有稳定符号。"
   (:require [top.kzre.krro.ui.core.bind]
+            [top.kzre.krro.ui.core.component :as component]
             [top.kzre.krro.ui.core.diff :as diff]
             [top.kzre.krro.ui.core.protocol :as proto]
             [top.kzre.krro.ui.core.vnode :as vnode]))
@@ -24,3 +25,6 @@
 
 ;; ── Diff 算法与执行器 ───────────────────────────────
 (def diff! diff/diff!)
+
+
+(def reg-component component/reg-component)
