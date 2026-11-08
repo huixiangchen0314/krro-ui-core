@@ -30,9 +30,11 @@
 (defn- resolve-value
   "根据 getter 或 path 从 source 中提取原始值。"
   [source getter path]
-  (or (when getter (getter source))
-      (when path (get-in source path))
-      source))
+  (cond
+    getter (getter source)
+    path (get-in source path)
+    :else
+   source))
 
 (defn- apply-binding-spec!
   "根据绑定规范 spec 和 element，从 source 中取值并应用到 element。
