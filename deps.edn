@@ -7,7 +7,8 @@
 
  :aliases
  {:build
-  {:deps {io.github.clojure/tools.build {:mvn/version "0.9.6"}
+  {:deps {io.github.huixiangchen0314/clj-build-template
+          {:git/sha "711f64a8966accc0364ada5b841d0bdacbc9cc93"}
           org.slf4j/slf4j-nop {:mvn/version "2.0.7"}}
    :ns-default build}
   :run
